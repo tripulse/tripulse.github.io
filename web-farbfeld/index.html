@@ -1,0 +1,42 @@
+<html>
+<style>
+    #box {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-flow: column wrap;
+    }
+
+    #viewer {
+        background: black;
+        width: 80vw;
+        height: 80vh;
+    }
+</style>
+<body>
+    <div id="box">
+        <canvas width=0 height=0 id="viewer"></canvas>
+        <input type="file" id="imguploader"/>
+    </div>
+</body>
+<script src='farbfeld.js'></script>
+<script>
+    let uploader = document.getElementById('imguploader');
+    
+    // the size of the canvas varies upon the size of the image
+    // loaded in the viewer, lager ones take more time.
+    let viewer   = document.getElementById('viewer').getContext('2d');
+
+    uploader.onchange = async evt => {
+        let image = Farbfeld.decode(
+            await new Response(evt.target.files[0]).arrayBuffer());
+
+        viewer.canvas.width  = image.width;
+        viewer.canvas.height = image.height;
+
+        viewer.putImageData(image, 0, 0);
+    }
+</script>
+</html>
