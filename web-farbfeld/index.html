@@ -1,42 +1,54 @@
 <html>
 <style>
-    #box {
-        width: 100vw;
-        height: 100vh;
+    body {
         display: flex;
+        flex-flow: row wrap;
         align-items: center;
         justify-content: center;
-        flex-flow: column wrap;
     }
 
-    #viewer {
+    canvas {
         background: black;
-        width: 80vw;
-        height: 80vh;
+        width: 100%;
+        height: 95%;
     }
 </style>
 <body>
-    <div id="box">
-        <canvas width=0 height=0 id="viewer"></canvas>
-        <input type="file" id="imguploader"/>
-    </div>
+    <canvas></canvas>
+    <input type="file"/>
 </body>
-<script src='farbfeld.js'></script>
 <script>
-    let uploader = document.getElementById('imguploader');
-    
-    // the size of the canvas varies upon the size of the image
-    // loaded in the viewer, lager ones take more time.
-    let viewer   = document.getElementById('viewer').getContext('2d');
+    var render = document.querySelector('canvas').getContext('2d');
+    var ffFile = document.querySelector('input[type=file]');
 
-    uploader.onchange = async evt => {
-        let image = Farbfeld.decode(
-            await new Response(evt.target.files[0]).arrayBuffer());
+    // 8 "farbfeld"
+    // 4 <u32le>  # width
+    // 4 <u32le>  # height
 
-        viewer.canvas.width  = image.width;
-        viewer.canvas.height = image.height;
+    ffFile.oninput = async () => {
+        // pick the first file and convert to a stream.
+        let ffData = new DataView(await ffFile.files[0].arrayBuffer());
 
-        viewer.putImageData(image, 0, 0);
+        // this may seem weird, but since the restriction of
+        // 52 bit integral limit due to all numbers in javascript
+        // are floating point and it has a 52bit large mantissa
+        // component. instead of representing it as a integer
+        // we've interpreted "farbfeld" as IEEE754 double
+        if(ffData.getFloat64(0) != 1.4826665200342208e+185) {
+            console.error("Farbfeld signature mismatch");
+            return;
+        }
+
+        let ffIWidth  = render.canvas.width  = ffData.getUint32(8),
+            ffIHeight = render.canvas.height = ffData.getUint32(12);
+        
+        let ffCImg = new ImageData(ffIWidth, ffIHeight);
+        let ffMaxPos = 4 * render.canvas.width * render.canvas.height;
+
+        for(let i = 0; i < ffMaxPos; ++i)
+            ffCImg.data[i] = ffData.getUint8(2*i + 16);
+
+        render.putImageData(ffCImg, 0, 0);
     }
 </script>
 </html>
